@@ -44,15 +44,16 @@ And for the final step, and the most painful one, find a way to:
 - create a OSX instance via qemu
 - find a way to make it replicable with NixOS/NixOps
 
-** Setting up NixOS
+** Installing NixOS
 
-Let's start by downloading the iso from [[https://nixos.org/download.html][NixOS Download Page]]. Personnaly, I always take the minimal iso image since I don't need graphical
+Let's start by downloading the iso from [[https://nixos.org/download.html][NixOS Download Page]]. Personally, I always take the minimal ISO image since I don't need graphical
 interface (and there is no graphical installer, so I guess it's only for testing purpose?).
 
 Now, we can flash that iso into a USB drive. It's easy as that:
 
 #+begin_src shell
-dd if=~/Downloads/nixos-minimal-...-x86_64-linux.iso of=/dev/sdx
+sudo dd if=~/Downloads/nixos-minimal-...-x86_64-linux.iso of=/dev/sdx
+sync # ensure that everything is written on the disk
 #+end_src
 
 Replace ~/dev/sdx~ with the correct device on your system. If you don't know how to find it, you can run:
@@ -63,3 +64,83 @@ lsblk -b
 # On MacOS
 diskutil list
 #+end_src
+
+Everything is explained here from the official documentation: https://nixos.org/manual/nixos/stable/index.html#sec-booting-from-usb
+
+Now that our USB device is ready, let's boot it!
+
+First thing: we need to setup the network. If you have an ethernet cable, you will probably have an internet connection, otherwise, setup internet via `wpa_supplicant` (you should look [[https://nixos.org/manual/nixos/stable/index.html#sec-installation-booting-networking][here]]).
+
+After that, we are setting up our partitions.
+I usually do this partitioning:
+
+| partition | size           | fs type |
+|-----------+----------------+---------|
+| /boot     | 1GB            | fat32   |
+| <swap>    | <ram size / 2> | swap    |
+| /         | <rest>         | zfs     |
+
+Since I am using ZFS, I use this documentation as an helper: https://nixos.wiki/wiki/NixOS_on_ZFS
+
+For my ZFS pool setup, I have this:
+
+#+begin_src shell
+$ zpool create -O mountpoint=none -f tank /dev/nvme1n1p3 /dev/nvme0n1p1
+$ zfs create -o mountpoint=legacy tank/system
+$ zfs create -o mountpoint=legacy tank/system/var
+$ zfs create -o mountpoint=legacy tank/local
+$ zfs create -o mountpoint=legacy -o compression=on -o atime=off tank/local/nix
+$ zfs create -o mountpoint=legacy tank/user
+$ zfs create -o mountpoint=legacy tank/user/home
+$ zfs set xattr=sa acltype=posixacl tank/system/var
+
+$ zfs list
+NAME              USED  AVAIL     REFER  MOUNTPOINT
+tank              438K   651G       24K  none
+tank/local         48K   651G       24K  legacy
+tank/local/nix     24K   651G       24K  legacy
+tank/system        48K   651G       24K  legacy
+tank/system/var    24K   651G       24K  legacy
+tank/user          48K   651G       24K  legacy
+tank/user/home     24K   651G       24K  legacy
+#+end_src
+
+You probably want to read this for best partitions: https://grahamc.com/blog/nixos-on-zfs
+
+So, my partition is correctly setup, I can now mount everything and generate my config:
+
+#+begin_src shell
+$ mount -t zfs tank/system /mnt
+$ mkdir -p /mnt/{home,var,nix}
+$ mount -t zfs tank/local/nix /mnt/nix
+$ mount -t zfs tank/system/var /mnt/var
+$ mount -t zfs tank/user/home /mnt/home
+$ nixos-generate-config --root /mnt
+#+end_src
+
+After modifying the configuration, and ensuring that the configuration file contains:
+
+#+begin_src nix
+  boot.initrd.supportedFilesystems = [ "zfs" ];
+  boot.supportedFilesystems = [ "zfs" ];
+  networking.hostId = "<head -c 8 /etc/machine-id>";
+  networking.wireless.enable = true; # if you don't have ethernet
+  networking.wireless.interfaces = ["<interface>"];
+#+end_src
+
+And finally:
+
+#+begin_src shell
+$ nixos-install
+#+end_src
+
+Yeah! NixOS is now installed!
+
+It's not time for reboot.
+
+** Configuring our machine
+
+#+begin_comment
+Disable lid switch:
+services.logind.lidSwitch = "ignore";
+#+end_comment
