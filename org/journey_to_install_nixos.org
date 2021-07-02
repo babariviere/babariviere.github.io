@@ -128,6 +128,15 @@ After modifying the configuration, and ensuring that the configuration file cont
   networking.wireless.interfaces = ["<interface>"];
 #+end_src
 
+
+If you are on laptop, add this to your configuration:
+
+#+begin_src nix
+services.logind.lidSwitch = "ignore";
+#+end_src
+
+It will disable the "sleep on lid close".
+
 And finally:
 
 #+begin_src shell
@@ -139,8 +148,54 @@ Yeah! NixOS is now installed!
 It's not time for reboot.
 
 ** Configuring our machine
+*** Setup Tailscale and SSH
+Let's by enabling OpenSSH so we can access remotely our machine.
 
-#+begin_comment
-Disable lid switch:
-services.logind.lidSwitch = "ignore";
-#+end_comment
+To do this, start by adding this in your configuration:
+
+#+begin_src nix
+services.openssh.enable = true;
+#+end_src
+
+Now, connect to your machine and copy your public ssh key so you don't have to enter the password again.
+
+Next, we can setup tailscale. It is as simple as this:
+
+#+begin_src nix
+services.tailscale.enable = true;
+networking.firewall = {
+  allowedUDPPorts = [ config.services.tailscale.port ];
+  # required if you want to SSH to the machine, for example
+  trustedInterfaces = [ config.services.tailscale.interfaceName ];
+};
+#+end_src
+
+Activate both services with:
+
+#+begin_src shell
+nixos-rebuild switch
+#+end_src
+
+Go to tailscale admin console, and generate a temporary key (one-time usage).
+It will be used to connect to tailscale without the user interface.
+
+Once you have your key, run this command:
+
+#+begin_src shell
+tailscale up --authkey tskey-...
+#+end_src
+
+And now your machine is connected to the private network!
+
+Since you can access it from tailscale, let's make the SSH port private (by excluding it from the firewall).
+
+#+begin_src nix
+services.openssh.openFirewall = false;
+#+end_src
+
+Don't forget to ~nixos-rebuild switch~!
+
+You can check that it's now inaccessible by running your usual ssh command. It should get stuck and you will have a timeout.
+To access it, you have to use the private IP from tailscale.
+
+*** Enable nix-serve
