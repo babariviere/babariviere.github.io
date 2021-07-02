@@ -6,7 +6,7 @@
 #+HUGO_TAGS: nix nixos darwin
 #+HUGO_DRAFT: true
 
-* A journey to install NixOS
+* Setup a nix-builder for Linux and Darwin
 
 Today, I want to install NixOS on my old laptop. His goal is to be a multi-arch builder. That means it will support these architectures:
 - x86_64-linux (native)

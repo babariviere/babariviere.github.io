@@ -6,7 +6,7 @@ tags = ["nix", "nixos", "darwin"]
 draft = true
 +++
 
-## A journey to install NixOS {#a-journey-to-install-nixos}
+## Setup a nix-builder for Linux and Darwin {#setup-a-nix-builder-for-linux-and-darwin}
 
 Today, I want to install NixOS on my old laptop. His goal is to be a multi-arch builder. That means it will support these architectures:
 
