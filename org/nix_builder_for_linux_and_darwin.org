@@ -13,9 +13,8 @@ Today, I want to install NixOS on my old laptop. His goal is to be a multi-arch 
 - x86_64-darwin (qemu)
 - and more arch via cross-compilation (if possible)
 
-Why I am doing this? Currently, I have a macbook pro from my current job. To be honest, it doesn't have great performance.
-Docker on Mac is, to be honest, a nightmare in term of performance, and since we are developping a big application (in Elixir),
-it requires a beefy machine.
+Why I am doing this? Currently, I use a macbook pro (provided by my current job), Docker on Mac is, to be honest,
+a nightmare in term of performance, and since we are developping a big application (in Elixir), it requires a beefy machine.
 
 ** Plan
 
